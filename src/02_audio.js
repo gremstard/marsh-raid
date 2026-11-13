@@ -51,6 +51,7 @@ const SFX = {
   },
   hit(x, y) { const s = this.spatial(x, y, 900); this.noise(0.06, 'bandpass', 2500, 2, 0.35 * s.gain, s.pan); this.tone(300, 0.08, 'triangle', 0.25 * s.gain, s.pan, 120); },
   whizz() { this.noise(0.12, 'bandpass', 3200 + Math.random() * 1500, 3, 0.35, Math.random() - 0.5, 0.002); },
+  thunder() { this.noise(1.6, 'lowpass', 180, 0.7, 0.9, Math.random() - 0.5, 0.05); this.tone(45, 1.2, 'sine', 0.5, 0, 25); },
   hurt() { this.noise(0.15, 'lowpass', 600, 1, 0.6, 0); this.tone(180, 0.2, 'sawtooth', 0.25, 0, 60); },
   ricochet(x, y) { const s = this.spatial(x, y, 800); this.tone(1800 + Math.random() * 800, 0.12, 'square', 0.08 * s.gain, s.pan, 300); },
   quack(x, y, pitch = 1) { const s = this.spatial(x, y, 700); if (s.gain < 0.02) return; this.tone(420 * pitch, 0.14, 'sawtooth', 0.14 * s.gain, s.pan, 220 * pitch); },

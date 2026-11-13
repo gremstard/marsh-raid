@@ -15,7 +15,7 @@ const R = {
   },
   prerenderMap(w) {
     const c = document.createElement('canvas'); c.width = w.w * TILE; c.height = w.h * TILE; const x = c.getContext('2d');
-    const cols = { [T.GRASS]: '#5f8f3f', [T.WATER]: '#3f6fa8', [T.ROAD]: '#8b8068', [T.WALL]: '#4a4350', [T.FLOOR]: '#9a8a70', [T.TREE]: '#5f8f3f', [T.MUD]: '#6f6a3f', [T.FENCE]: '#5f8f3f' };
+    const cols = { [T.GRASS]: '#5f8f3f', [T.WATER]: '#3f6fa8', [T.ROAD]: '#8b8068', [T.WALL]: '#4a4350', [T.FLOOR]: '#9a8a70', [T.TREE]: '#5f8f3f', [T.MUD]: '#6f6a3f', [T.FENCE]: '#5f8f3f', [T.LOCKED]: '#4a4350' };
     for (let ty = 0; ty < w.h; ty++) for (let tx = 0; tx < w.w; tx++) {
       const t = w.get(tx, ty); const px = tx * TILE, py = ty * TILE; const hv = hash2(tx, ty);
       x.fillStyle = cols[t]; x.fillRect(px, py, TILE, TILE);
@@ -29,6 +29,7 @@ const R = {
     for (let ty = 0; ty < w.h; ty++) for (let tx = 0; tx < w.w; tx++) {
       const t = w.get(tx, ty); const px = tx * TILE, py = ty * TILE;
       if (t === T.WALL) { x.fillStyle = '#4a4350'; x.fillRect(px, py, TILE, TILE); x.fillStyle = '#6a6272'; x.fillRect(px + 4, py + 4, TILE - 8, TILE - 8); x.strokeStyle = '#2a2530'; x.lineWidth = 3; x.strokeRect(px + 1.5, py + 1.5, TILE - 3, TILE - 3); }
+      if (t === T.LOCKED) { x.fillStyle = '#5a4a3a'; x.fillRect(px, py, TILE, TILE); x.fillStyle = '#7a6a4a'; x.fillRect(px + 4, py + 4, TILE - 8, TILE - 8); x.strokeStyle = '#2a2520'; x.lineWidth = 3; x.strokeRect(px + 1.5, py + 1.5, TILE - 3, TILE - 3); x.fillStyle = '#f2d84a'; x.fillRect(px + 17, py + 20, 14, 12); x.strokeStyle = '#f2d84a'; x.lineWidth = 3; x.beginPath(); x.arc(px + 24, py + 20, 6, Math.PI, 0); x.stroke(); }
       if (t === T.FENCE) { x.fillStyle = '#7a5a3a'; x.fillRect(px, py + 18, TILE, 6); x.fillRect(px, py + 30, TILE, 6); x.fillRect(px + 8, py + 10, 8, 30); x.fillRect(px + 32, py + 10, 8, 30); x.strokeStyle = '#3a2a1a'; x.lineWidth = 2; x.strokeRect(px + 8, py + 10, 8, 30); x.strokeRect(px + 32, py + 10, 8, 30); }
     }
     for (let ty = 0; ty < w.h; ty++) for (let tx = 0; tx < w.w; tx++) {
@@ -110,7 +111,7 @@ const R = {
     // bullets
     x.lineCap = 'round'; for (const b of g.bullets) { x.strokeStyle = b.owner instanceof Player ? '#fff0a0' : '#ffb0a0'; x.lineWidth = 3; x.beginPath(); x.moveTo(b.px, b.py); x.lineTo(b.x, b.y); x.stroke(); }
     // enemies (only when seen)
-    for (const e of g.enemies) { if (e.dead || !inView(e.x, e.y)) continue; if (!g.canPlayerSee(e)) continue; this.drawDuck(x, e, e.d.col, e.d.beak, e.d.big); }
+    for (const e of g.enemies) { if (e.dead || !inView(e.x, e.y)) continue; if (!g.canPlayerSee(e)) continue; this.drawDuck(x, e, e.d.col, e.d.beak, e.d.big); if (G.ally === e.faction && !e.betrayed) { x.fillStyle = FACTIONS[e.faction].col; x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.beginPath(); x.arc(e.x, e.y - e.r - 10, 4, 0, TAU); x.fill(); x.stroke(); } }
     // player
     if (!p.dead) this.drawDuck(x, p, '#f2d84a', '#f08a30', false);
     // sound pings (heard but unseen)
@@ -119,6 +120,7 @@ const R = {
     for (const f of this.flashes) { x.fillStyle = `rgba(255,220,120,${f.t / 0.06})`; x.beginPath(); x.arc(f.x, f.y, 14, 0, TAU); x.fill(); }
     // interaction prompt
     const near = g.nearestContainer(); if (near && !p.searching && !g.ui.lootOpen) { const d = CONTAINER_DEF[near.type]; x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(near.x - 60, near.y - d.h / 2 - 32, 120, 20); x.fillStyle = '#fff'; x.font = 'bold 12px sans-serif'; x.textAlign = 'center'; x.fillText((IS_TOUCH ? 'TAP' : '[E]') + ' ' + (near.searched ? 'Open ' : 'Search ') + d.name, near.x, near.y - d.h / 2 - 18); }
+    const ld = !near && g.nearestLocked(); if (ld && !g.ui.lootOpen) { const key = g.cfg.key; const has = p.hasKey(key); x.fillStyle = 'rgba(0,0,0,0.6)'; x.fillRect(ld.x - 70, ld.y - 44, 140, 20); x.fillStyle = has ? '#fff' : '#f99'; x.font = 'bold 12px sans-serif'; x.textAlign = 'center'; x.fillText(has ? (IS_TOUCH ? 'TAP' : '[E]') + ' Unlock (' + ITEMS[key].name + ')' : 'Locked · ' + ITEMS[key].name, ld.x, ld.y - 30); }
     if (p.searching) { const c = p.searching.c; const t = p.searching.t / CONTAINER_DEF[c.type].time; x.fillStyle = '#000a'; x.fillRect(c.x - 30, c.y + 28, 60, 8); x.fillStyle = '#ffd04a'; x.fillRect(c.x - 30, c.y + 28, 60 * t, 8); }
     // fog of war
     this.drawFog(p, w);
@@ -150,7 +152,10 @@ const R = {
     for (const fl of this.flashes) { const [sx, sy] = this.worldToScreen(fl.x, fl.y); const gr = f.createRadialGradient(sx, sy, 0, sx, sy, 130 * this.scale); gr.addColorStop(0, `rgba(0,0,0,${fl.t / 0.06 * 0.9})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); f.fillStyle = gr; f.beginPath(); f.arc(sx, sy, 130 * this.scale, 0, TAU); f.fill(); }
     // extract beacons faintly visible
     for (const e of w.extracts) { if (!G.extractOpen(e)) continue; const [sx, sy] = this.worldToScreen(e.x, e.y); const gr = f.createRadialGradient(sx, sy, 0, sx, sy, 110 * this.scale); gr.addColorStop(0, 'rgba(0,0,0,0.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); f.fillStyle = gr; f.beginPath(); f.arc(sx, sy, 110 * this.scale, 0, TAU); f.fill(); }
+    if (G.lightning > 0) { f.globalCompositeOperation = 'destination-out'; f.fillStyle = `rgba(0,0,0,${Math.min(1, G.lightning / 0.25) * 0.92})`; f.fillRect(0, 0, cw, ch); }
     const x = this.ctx; x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(this.fog, 0, 0);
+    if (G.weather.rain) { x.strokeStyle = 'rgba(180,200,230,0.28)'; x.lineWidth = 1.5 * this.dpr; x.beginPath(); for (let i = 0; i < 90; i++) { const rx = Math.random() * cw, ry = Math.random() * ch; x.moveTo(rx, ry); x.lineTo(rx - 6 * this.dpr, ry + 22 * this.dpr); } x.stroke(); }
+    if (G.lightning > 0) { x.fillStyle = `rgba(220,230,255,${Math.min(1, G.lightning / 0.25) * 0.35})`; x.fillRect(0, 0, cw, ch); }
   },
   drawHUD(p, w, g) {
     const x = this.ctx; const d = this.dpr; x.setTransform(d, 0, 0, d, 0, 0); const W = this.W, H = this.H;
@@ -175,6 +180,7 @@ const R = {
     if (p.useItem) { x.fillStyle = '#000a'; x.fillRect(W / 2 - 80, H / 2 + 50, 160, 22); x.fillStyle = '#6f6'; x.fillRect(W / 2 - 78, H / 2 + 52, 156 * (1 - p.useT / ITEMS[p.useItem.id].time), 18); x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = 'bold 12px sans-serif'; x.fillText('Using ' + ITEMS[p.useItem.id].name, W / 2, H / 2 + 66); }
     // timer & extracts
     x.textAlign = 'center'; x.fillStyle = '#000a'; x.fillRect(W / 2 - 60, 10, 120, 30); x.fillStyle = g.timeLeft < 60 ? '#f66' : '#fff'; x.font = 'bold 20px sans-serif'; x.fillText(fmtTime(g.timeLeft), W / 2, 33);
+    { let st = g.weather.icon + ' ' + g.weather.name + '  ·  '; if (g.contract) st += `CONTRACT for ${FACTIONS[g.contract.faction].short}: ${g.contract.kills}/${g.contract.count} ${FACTIONS[g.contract.target].short}`; else if (g.ally) st += (g.betrayed ? 'BETRAYED ' : 'ALLIED · ') + FACTIONS[g.ally].name; else st += 'SOLO'; x.font = 'bold 11px sans-serif'; const tw = x.measureText(st).width + 16; x.fillStyle = '#000a'; x.fillRect(W / 2 - tw / 2, 42, tw, 16); x.fillStyle = g.betrayed ? '#f88' : '#cde'; x.fillText(st, W / 2, 54); }
     x.textAlign = 'left'; x.font = 'bold 12px sans-serif'; let ey = 18;
     x.fillStyle = '#000a'; x.fillRect(pad, 10, 210, 16 * w.extracts.length + 10);
     for (const e of w.extracts) { const open = g.extractOpen(e); x.fillStyle = open ? '#8f8' : '#f99'; x.fillText(`${open ? '●' : '○'} ${e.name}  ${open ? 'OPEN' : (g.time < e.openAt ? fmtTime(e.openAt - g.time) : 'closed')}`, pad + 8, ey + 4); ey += 16; }
@@ -183,7 +189,7 @@ const R = {
     // extraction progress
     if (p.extracting) { x.fillStyle = '#000a'; x.fillRect(W / 2 - 150, H / 2 - 120, 300, 40); x.fillStyle = '#3c3'; x.fillRect(W / 2 - 146, H / 2 - 116, 292 * (p.extracting.t / 6), 32); x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = 'bold 16px sans-serif'; x.fillText('EXTRACTING… stay in the zone', W / 2, H / 2 - 96); }
     // kills / loot
-    x.textAlign = 'right'; x.font = 'bold 12px sans-serif'; x.fillStyle = '#000a'; x.fillRect(W - pad - 150, 10, 150, 36); x.fillStyle = '#fff'; x.fillText(`Kills ${p.kills}`, W - pad - 8, 24); x.fillStyle = '#ffd04a'; x.fillText(`Loot ${fmtMoney(g.carriedValue())}  ${p.inv.length}/${p.capacity}`, W - pad - 8, 40);
+    x.textAlign = 'right'; x.font = 'bold 12px sans-serif'; x.fillStyle = '#000a'; x.fillRect(W - pad - 150, 10, 150, 36); x.fillStyle = '#fff'; x.fillText(`Kills ${p.kills}`, W - pad - 8, 24); x.fillStyle = '#ffd04a'; x.fillText(`Loot ${fmtMoney(g.carriedValue())}  ${p.totalCells() - p.freeCells()}/${p.totalCells()}`, W - pad - 8, 40);
     // toasts
     x.textAlign = 'center'; let ty = IS_TOUCH ? H * 0.5 - 90 : H * 0.72; for (const t of g.toasts) { x.globalAlpha = clamp(t.t, 0, 1); x.fillStyle = '#000b'; const tw = x.measureText(t.msg).width + 24; x.fillRect(W / 2 - tw / 2, ty - 16, tw, 24); x.fillStyle = '#ffe'; x.font = 'bold 14px sans-serif'; x.fillText(t.msg, W / 2, ty + 1); ty -= 30; } x.globalAlpha = 1;
     // crosshair
@@ -203,7 +209,7 @@ const R = {
   },
   drawMinimap(x, W, H, p, w, g) {
     this.miniT -= 1 / 60; if (this.miniT <= 0 || !this.mini) { this.miniT = 0.5; this.exploredMap(w); }
-    const size = IS_TOUCH ? 110 : 150, S = 6, px = W - size - 14, py = IS_TOUCH ? 190 : 56; const view = 14; // tiles radius
+    const size = IS_TOUCH ? 110 : 150, S = 6, px = W - size - 14, py = IS_TOUCH ? 190 : 62; const view = 14; // tiles radius
     x.save(); x.fillStyle = '#000c'; x.fillRect(px - 3, py - 3, size + 6, size + 6); x.beginPath(); x.rect(px, py, size, size); x.clip();
     const sc = size / (view * 2 * S); x.translate(px + size / 2, py + size / 2); x.scale(sc, sc); x.translate(-p.x / TILE * S, -p.y / TILE * S);
     x.imageSmoothingEnabled = true; x.drawImage(this.mini, 0, 0);

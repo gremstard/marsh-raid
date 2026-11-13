@@ -1,14 +1,14 @@
 // ---------- world: map generation, collision, LOS, pathfinding ----------
-const T = { GRASS: 0, WATER: 1, ROAD: 2, WALL: 3, FLOOR: 4, TREE: 5, MUD: 6, FENCE: 7 };
-const SOLID = new Set([T.WATER, T.WALL, T.TREE, T.FENCE]);
-const OPAQUE = new Set([T.WALL, T.TREE]);
+const T = { GRASS: 0, WATER: 1, ROAD: 2, WALL: 3, FLOOR: 4, TREE: 5, MUD: 6, FENCE: 7, LOCKED: 8 };
+const SOLID = new Set([T.WATER, T.WALL, T.TREE, T.FENCE, T.LOCKED]);
+const OPAQUE = new Set([T.WALL, T.TREE, T.LOCKED]);
 
 class World {
   constructor(cfg, seed) {
     this.cfg = cfg; this.w = cfg.w; this.h = cfg.h; this.seed = seed;
     rng = mulberry32(seed);
     this.tiles = new Uint8Array(this.w * this.h);
-    this.buildings = []; this.containers = []; this.extracts = []; this.enemySpawns = [];
+    this.buildings = []; this.containers = []; this.extracts = []; this.enemySpawns = []; this.lockedRooms = [];
     this.generate();
     rng = Math.random;
   }
@@ -81,9 +81,9 @@ class World {
         const type = weightedPick([['crate', 6], ['locker', 5], ['medbox', 3], ['weaponbox', 2 + cfg.lootMul], ['safe', 0.6 + cfg.lootMul * 0.6]]);
         this.addContainer(cx, cy, type);
       }
-      // enemies gather at buildings
-      const en = randi(1, 2);
-      for (let i = 0; i < en; i++) this.enemySpawns.push({ x: (b.x + b.w / 2) * TILE + rand(-80, 80), y: (b.y + b.h / 2) * TILE + rand(-80, 80), home: b });
+      // enemies gather at buildings (not inside locked rooms)
+      const en = randi(2, 3);
+      for (let i = 0; i < en; i++) { for (let t = 0; t < 10; t++) { const sx = randi(b.x + 1, b.x + b.w - 2), sy = randi(b.y + 1, b.y + b.h - 2); if (this.get(sx, sy) === T.FLOOR && !this.inLockedRoom(sx, sy)) { this.enemySpawns.push({ x: sx * TILE + TILE / 2, y: sy * TILE + TILE / 2, home: b }); break; } } }
     }
     for (let i = 0; i < Math.floor(w * h / 110 * cfg.lootMul); i++) {
       const cx = randi(2, w - 3), cy = randi(2, h - 3);
@@ -92,9 +92,9 @@ class World {
       this.addContainer(cx, cy, weightedPick([['crate', 6], ['scrap', 5], ['medbox', 1], ['weaponbox', 0.5]]));
     }
     // roaming enemies anywhere walkable, away from spawn
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 24; i++) {
       const cx = randi(3, w - 4), cy = randi(3, h - 4);
-      if (this.solid(cx, cy)) continue; if (Math.abs(cx - this.spawn.x) + Math.abs(cy - this.spawn.y) < 14) continue;
+      if (this.solid(cx, cy) || this.get(cx, cy) === T.FLOOR) continue; if (Math.abs(cx - this.spawn.x) + Math.abs(cy - this.spawn.y) < 22) continue;
       this.enemySpawns.push({ x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2, home: null });
     }
     // clear area around spawn
@@ -111,13 +111,28 @@ class World {
       if (s === 0) this.set(randi(bx + 1, bx + bw - 2), by, T.FLOOR); if (s === 1) this.set(randi(bx + 1, bx + bw - 2), by + bh - 1, T.FLOOR);
       if (s === 2) this.set(bx, randi(by + 1, by + bh - 2), T.FLOOR); if (s === 3) this.set(bx + bw - 1, randi(by + 1, by + bh - 2), T.FLOOR);
     }
-    // interior wall
-    if (bw >= 8 && chance(0.7)) { const ix = randi(bx + 3, bx + bw - 4); const gap = randi(by + 1, by + bh - 2); for (let j = by + 1; j < by + bh - 1; j++) if (j !== gap && j !== gap + 1) this.set(ix, j, T.WALL); }
-    else if (bh >= 8 && chance(0.7)) { const iy = randi(by + 3, by + bh - 4); const gap = randi(bx + 1, bx + bw - 2); for (let i = bx + 1; i < bx + bw - 1; i++) if (i !== gap && i !== gap + 1) this.set(i, iy, T.WALL); }
+    // interior wall, sometimes sealing off a locked room (needs the map key)
+    const lock = chance(0.55);
+    if (bw >= 8 && chance(0.75)) { const ix = randi(bx + 3, bx + bw - 4); const gap = randi(by + 1, by + bh - 2); for (let j = by + 1; j < by + bh - 1; j++) if (j !== gap && (lock || j !== gap + 1)) this.set(ix, j, T.WALL);
+      if (lock) { const left = ix - bx - 1, right = bx + bw - 2 - ix; const room = left <= right ? { x0: bx + 1, y0: by + 1, x1: ix - 1, y1: by + bh - 2 } : { x0: ix + 1, y0: by + 1, x1: bx + bw - 2, y1: by + bh - 2 }; this.sealRoom(room, ix, gap, bx, by, bw, bh); } }
+    else if (bh >= 8 && chance(0.75)) { const iy = randi(by + 3, by + bh - 4); const gap = randi(bx + 1, bx + bw - 2); for (let i = bx + 1; i < bx + bw - 1; i++) if (i !== gap && (lock || i !== gap + 1)) this.set(i, iy, T.WALL);
+      if (lock) { const top = iy - by - 1, bot = by + bh - 2 - iy; const room = top <= bot ? { x0: bx + 1, y0: by + 1, x1: bx + bw - 2, y1: iy - 1 } : { x0: bx + 1, y0: iy + 1, x1: bx + bw - 2, y1: by + bh - 2 }; this.sealRoom(room, gap, iy, bx, by, bw, bh); } }
     // a bit of fence/yard
     if (chance(0.4)) { const fy = by + bh + 1; for (let i = bx; i < bx + bw; i++) if (i !== bx + Math.floor(bw / 2) && this.get(i, fy) === T.GRASS) this.set(i, fy, T.FENCE); }
     this.buildings.push({ x: bx, y: by, w: bw, h: bh });
   }
+  sealRoom(room, dx, dy, bx, by, bw, bh) {
+    this.set(dx, dy, T.LOCKED);
+    // remove exterior doors that open into the locked side
+    for (let i = bx; i < bx + bw; i++) for (const j of [by, by + bh - 1]) if (this.get(i, j) === T.FLOOR && i >= room.x0 && i <= room.x1 && ((j === by && room.y0 === by + 1) || (j === by + bh - 1 && room.y1 === by + bh - 2))) this.set(i, j, T.WALL);
+    for (let j = by; j < by + bh; j++) for (const i of [bx, bx + bw - 1]) if (this.get(i, j) === T.FLOOR && j >= room.y0 && j <= room.y1 && ((i === bx && room.x0 === bx + 1) || (i === bx + bw - 1 && room.x1 === bx + bw - 2))) this.set(i, j, T.WALL);
+    room.door = { x: dx, y: dy }; this.lockedRooms.push(room);
+    // premium loot inside
+    const spots = []; for (let y = room.y0; y <= room.y1; y++) for (let x = room.x0; x <= room.x1; x++) spots.push([x, y]);
+    spots.sort(() => rng() - 0.5); const types = ['safe', 'weaponbox', 'locker', 'medbox']; for (let i = 0; i < Math.min(spots.length, randi(2, 3)); i++) this.addContainer(spots[i][0], spots[i][1], types[i]);
+  }
+  inLockedRoom(tx, ty) { return this.lockedRooms.some(r => tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1); }
+  unlock(tx, ty) { if (this.get(tx, ty) === T.LOCKED) { this.set(tx, ty, T.FLOOR); return true; } return false; }
   containerAt(tx, ty) { return this.containers.find(c => Math.floor(c.x / TILE) === tx && Math.floor(c.y / TILE) === ty); }
   addContainer(tx, ty, type) { this.containers.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, type, items: null, opened: false, searched: false, rot: rand(-0.15, 0.15) }); }
   nearestWalkable(tx, ty, avoidInterior) {
@@ -135,6 +150,8 @@ class World {
       if (!reach[this.idx(ex, ey)]) this.carve(this.spawn.x, this.spawn.y, ex, ey);
     }
     for (const b of this.buildings) { const cx = b.x + Math.floor(b.w / 2), cy = b.y + Math.floor(b.h / 2); if (!reach[this.idx(cx, cy)]) { const r2 = this.reachable(this.spawn.x, this.spawn.y); if (!r2[this.idx(cx, cy)]) this.carve(this.spawn.x, this.spawn.y, cx, cy); } }
+    // keep building spawns far from the player spawn too
+    this.enemySpawns = this.enemySpawns.filter(sp => Math.abs(sp.x / TILE - this.spawn.x) + Math.abs(sp.y / TILE - this.spawn.y) >= 16);
     // drop enemy spawns / containers that are unreachable
     const r = this.reachable(this.spawn.x, this.spawn.y);
     this.enemySpawns = this.enemySpawns.filter(s => r[this.idx(Math.floor(s.x / TILE), Math.floor(s.y / TILE))]);
@@ -142,12 +159,12 @@ class World {
   }
   reachable(sx, sy) {
     const seen = new Uint8Array(this.w * this.h); const st = [[sx, sy]]; seen[this.idx(sx, sy)] = 1;
-    while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= this.w || ny >= this.h) continue; const i = this.idx(nx, ny); if (seen[i] || this.solid(nx, ny)) continue; seen[i] = 1; st.push([nx, ny]); } }
+    while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= this.w || ny >= this.h) continue; const i = this.idx(nx, ny); if (seen[i] || (this.solid(nx, ny) && this.get(nx, ny) !== T.LOCKED)) continue; seen[i] = 1; st.push([nx, ny]); } }
     return seen;
   }
   carve(x0, y0, x1, y1) { // L-shaped path converting water->mud, trees->grass, walls (not building perimeters)->door
     let x = x0, y = y0;
-    const step = (x, y) => { const t = this.get(x, y); if (t === T.WATER) this.set(x, y, T.MUD); else if (t === T.TREE || t === T.FENCE) this.set(x, y, T.GRASS); else if (t === T.WALL && x > 0 && y > 0 && x < this.w - 1 && y < this.h - 1) this.set(x, y, T.FLOOR); };
+    const step = (x, y) => { const t = this.get(x, y); if (this.inLockedRoom(x, y)) return; if (t === T.WATER) this.set(x, y, T.MUD); else if (t === T.TREE || t === T.FENCE) this.set(x, y, T.GRASS); else if (t === T.WALL && x > 0 && y > 0 && x < this.w - 1 && y < this.h - 1) this.set(x, y, T.FLOOR); };
     while (x !== x1) { x += Math.sign(x1 - x); step(x, y); step(x, y + 1); }
     while (y !== y1) { y += Math.sign(y1 - y); step(x, y); step(x + 1, y); }
   }
@@ -193,7 +210,7 @@ class World {
   }
   los(x0, y0, x1, y1) { const d = dist(x0, y0, x1, y1); return this.raycast(x0, y0, Math.atan2(y1 - y0, x1 - x0), d) >= d - 0.01; }
   // bullet-level blocking: walls, trees (trunk), fences block bullets too
-  bulletBlocked(px, py) { const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE); const t = this.get(tx, ty); if (t === T.WALL || t === T.FENCE) return true; if (t === T.TREE) return dist(px, py, tx * TILE + TILE / 2, ty * TILE + TILE / 2) < 15; return false; }
+  bulletBlocked(px, py) { const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE); const t = this.get(tx, ty); if (t === T.WALL || t === T.FENCE || t === T.LOCKED) return true; if (t === T.TREE) return dist(px, py, tx * TILE + TILE / 2, ty * TILE + TILE / 2) < 15; return false; }
 
   // --- A* on tile grid (8-neighbour, no corner cutting) ---
   astar(sx, sy, tx, ty, maxNodes = 2500) {

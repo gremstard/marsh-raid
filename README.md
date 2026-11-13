@@ -6,10 +6,15 @@ The whole game is one standalone HTML file: **[`dist/index.html`](dist/index.htm
 
 ## Play
 
-- **Hideout**: stash, loadout, trader (Old Mallard), quests from four NPCs, deploy.
+- **Hideout lobby** with five areas: Stash & Crafting, Merchants, Factions, Hideout Upgrades, Deploy.
+- **Grid inventories** (Tarkov style): stash, pockets, backpacks and containers are cell grids; drag items between them, `R` rotates while dragging, click an item for actions (sell, repair, split, equip, use, drop).
+- **Three factions** (Marsh Scavs, The Flock, Drake's Crew) fight each other on every map. Go solo (everyone hostile, all loot is yours), ally with a faction (two escorts, they ignore you, but they loot too) or take a mercenary contract (kill quota paid on extraction). Reputation gates allies, contracts and faction merchants.
+- **Keys and locked rooms**: each map has sealed rooms with the best loot. Keys have 3 uses and drop from lockers, safes, bodies, or faction merchants at high rep.
+- **Hideout upgrades**: stash rows, workbench (ammo/vest crafting, armor repair at L2), med station (bandages, painkillers, medkits).
+- **Weather** changes every 10 real minutes per map: clear, fog (short light), rain (muffled sound), storm (lightning lights up everything).
 - **Raid**: search containers, kill or avoid scavs, reach an open extract and stand in it for 6 seconds. Die or time out and you lose everything you brought.
 - **Suspense**: flashlight cone with real occlusion, tiny ambient glow, no hit markers, no enemy health bars, no exact mag count (check it with `C`), near-miss flinches, footsteps and gunshot rings for what you can't see. The flashlight lets scavs see you from much farther — turn it off (`F`) to sneak.
-- **Progression**: XP levels, quest chains that pay money, items and trader unlocks, three maps of increasing difficulty with a boss on the hardest.
+- **Progression**: XP levels, quest chains from four NPCs, faction reputation, hideout upgrades, three large maps with a boss on the hardest.
 
 Controls (desktop): `WASD` move · mouse aim · click fire · `R` reload · `C` check mag · `E` search / open · `Q` swap · `F` flashlight · `M` map · `Tab` inventory · `Shift` sprint · `Esc` pause.
 Touch: left stick move, right stick aim (push far to fire), buttons for reload / swap / inventory / interact / check mag, flashlight and map buttons top-right.
@@ -59,4 +64,4 @@ See [`docs/IOS_BUILD_PROMPT.md`](docs/IOS_BUILD_PROMPT.md): a prompt to paste in
 - Enemies have patrol / alert / search / chase states, hear gunshots and sprinting, path with A* on the tile grid, and shoot in bursts with reaction delay.
 - Maps are procedurally generated per raid from a seed: terrain noise, two roads, walled buildings with doors and interior walls, fences, trees, containers, three edge extracts (the farthest is always open; the others have timed windows).
 - Audio is fully procedural (WebAudio), spatialised by distance and pan. No asset files.
-- Save data lives in `localStorage` under `marshraid_save_v1`.
+- Save data lives in `localStorage` under `marshraid_save_v2` (v1 saves are migrated).

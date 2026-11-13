@@ -56,6 +56,34 @@
   .map b { font-size: 16px; } .map small { color: #9ab; margin-left: 8px; } .map p { font-size: 12px; margin: 4px 0; }
   .npc { background: #16201a; border-left: 6px solid; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
   .npc .nh { display: flex; align-items: center; gap: 8px; } .npc .nh small { color: #9ab; } .npc .qt { color: #f2d84a; display: block; margin-top: 6px; }
+  /* lobby */
+  .lobby { width: 100%; height: 100%; display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% 30%, #243a2c, #0f1a14 70%); padding: 16px; gap: 12px; overflow: auto; }
+  .lobby header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; flex: 1; align-content: start; }
+  .area { background: #1f2a24; border: 3px solid #0d1410; border-radius: 14px; padding: 18px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 130px; transition: transform .08s; }
+  .area:hover { transform: translateY(-2px); border-color: #3b5a44; } .area:active { transform: translateY(1px); }
+  .area .ic { font-size: 30px; } .area b { font-size: 17px; letter-spacing: 1px; } .area small { color: #9ab; }
+  .area.deploy { background: #3a2f10; border-color: #7a5a10; } .area.deploy b { color: #f2d84a; }
+  .scr { width: 100%; height: 100%; display: flex; flex-direction: column; background: linear-gradient(#1b2a22, #0f1a14); padding: 10px 14px; gap: 8px; }
+  .scr .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; } .scr .top h1 { font-size: 22px; } .scr .top .sp { flex: 1; }
+  .body { display: flex; gap: 12px; flex: 1; min-height: 0; } .body > section { background: #1f2a24; border: 3px solid #0d1410; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: auto; }
+  .body > section.fit { flex: 0 0 auto; } .body > section.grow { flex: 1; }
+  /* grids */
+  .grid { position: relative; background: #0f1712; border: 2px solid #0a0f0c; border-radius: 4px; touch-action: none; margin: 4px 0; flex: none; }
+  .gcells { position: absolute; inset: 0; background-image: linear-gradient(#ffffff10 1px, transparent 1px), linear-gradient(90deg, #ffffff10 1px, transparent 1px); background-size: 44px 44px; }
+  .gitem { position: absolute; box-sizing: border-box; border: 2px solid #0008; border-radius: 4px; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff), color-mix(in srgb, var(--c) 70%, #000)); cursor: grab; overflow: hidden; touch-action: none; user-select: none; }
+  .gitem .gl { position: absolute; left: 3px; top: 2px; right: 3px; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gitem .gb { position: absolute; right: 3px; bottom: 2px; font-size: 10px; font-weight: bold; color: #ffe; background: #000a; padding: 0 4px; border-radius: 3px; }
+  .gitem.ghost { opacity: 0.85; box-shadow: 0 8px 24px #000c; }
+  .gcell-hl { position: absolute; pointer-events: none; border-radius: 4px; }
+  .eslot { position: relative; display: inline-flex; align-items: center; justify-content: center; background: #0f1712; border: 2px dashed #3b5a44; border-radius: 6px; margin: 4px; vertical-align: top; } .eslot.has { border-style: solid; }
+  .eslot .sl { color: #5a7a64; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+  .eq { display: flex; flex-wrap: wrap; gap: 2px; align-items: flex-start; }
+  .imenu { position: fixed; z-index: 1001; background: #1f2a24; border: 2px solid #0d1410; border-radius: 8px; padding: 4px; display: flex; flex-direction: column; min-width: 150px; box-shadow: 0 8px 24px #000c; }
+  .imenu button { background: none; border: none; color: #fff; text-align: left; padding: 8px 10px; font-size: 13px; font-family: inherit; cursor: pointer; border-radius: 6px; } .imenu button:hover { background: #3b5a44; }
+  .bar { height: 10px; background: #0d1410; border-radius: 5px; overflow: hidden; margin: 4px 0; } .bar i { display: block; height: 100%; }
+  .fcard { background: #16201a; border-left: 6px solid; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .stance { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; } .stance .b.on { outline: 2px solid #f2d84a; }
   .two { display: flex; gap: 14px; } .two > div { flex: 1; min-width: 0; display: flex; flex-direction: column; max-height: 60vh; }
   .stats { display: flex; gap: 18px; flex-wrap: wrap; margin: 10px 0; font-size: 13px; color: #9ab; } .stats b { color: #fff; font-size: 16px; margin-left: 4px; }
   .res .list { max-height: 30vh; }
@@ -63,6 +91,7 @@
   @media (max-width: 1000px) {
     .tabs { display: flex; }
     .cols section { display: none; } .cols section.on { display: flex; }
+    .body { flex-direction: column; min-height: auto; } .body > section, .body > section.grow { flex: 0 0 auto; max-height: none; overflow: visible; width: auto !important; } .body > section > div[style*='overflow'] { overflow-x: auto; } .scr { overflow: auto; }
     .hub { padding: 8px; } h1 { font-size: 20px; } .hub .meta { font-size: 12px; gap: 10px; }
     .two { flex-direction: column; } .two > div { max-height: 34vh; }
     footer { display: none; }

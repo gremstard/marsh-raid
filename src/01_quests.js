@@ -37,7 +37,7 @@ function activeQuestFor(npc) { const s = G.save; return QUESTS.find(q => q.npc =
 function questProgress(q) { const s = G.save; return s.quests.progress[q.id] || 0; }
 function questReady(q) {
   const s = G.save;
-  if (q.type === 'bring') return q.items.every(([id, n]) => s.stash.filter(i => i.id === id).reduce((a, i) => a + (i.n || 1), 0) >= n);
+  if (q.type === 'bring') return q.items.every(([id, n]) => stashCount(id) >= n);
   return questProgress(q) >= q.count;
 }
 // called from gameplay: type + details
@@ -57,9 +57,9 @@ function questEvent(type, d) {
 }
 function turnInQuest(q) {
   const s = G.save; if (!questReady(q) || s.quests.done.includes(q.id)) return false;
-  if (q.type === 'bring') for (const [id, n] of q.items) { let need = n; for (const it of s.stash.slice()) { if (it.id !== id || need <= 0) continue; const take = Math.min(need, it.n || 1); need -= take; if (it.n) { it.n -= take; if (it.n <= 0) s.stash.splice(s.stash.indexOf(it), 1); } else s.stash.splice(s.stash.indexOf(it), 1); } }
+  if (q.type === 'bring') for (const [id, n] of q.items) stashTake(id, n);
   s.quests.done.push(q.id); const r = q.reward; s.money += r.money || 0; s.xp += r.xp || 0;
-  for (const [id, n] of (r.items || [])) UI.stashAdd(mk(id, n));
+  for (const [id, n] of (r.items || [])) G.stashAdd(mk(id, n));
   if (r.unlock) { if (!s.unlocks.includes(r.unlock)) s.unlocks.push(r.unlock); }
   G.persist(); return true;
 }
