@@ -1,7 +1,7 @@
 {
   "name": "marsh-raid",
   "productName": "Marsh Raid",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Top-down PvE extraction shooter with ducks. Standalone HTML5 game wrapped with Electron (macOS) and Capacitor (Android/iOS).",
   "main": "electron/main.js",
   "private": true,
