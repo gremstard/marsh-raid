@@ -1,0 +1,8 @@
+{
+  "appId": "com.gremstard.marshraid",
+  "appName": "Marsh Raid",
+  "webDir": "dist",
+  "ios": { "contentInset": "never", "backgroundColor": "#14201a" },
+  "android": { "backgroundColor": "#14201a", "allowMixedContent": false },
+  "plugins": { "SplashScreen": { "launchShowDuration": 0 } }
+}
